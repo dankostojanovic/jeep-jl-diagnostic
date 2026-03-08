@@ -52,19 +52,17 @@ These symptoms existed even when the car appeared "normal" — likely early sign
 - Pulled **F34** (ESC/EHPS/SBCM Wake Up) — symptoms remained
 - Pulled **F100** — symptoms remained
 
-### Relay Findings
-- Two relays found **significantly hotter than all other relays**: **K14** and **K15**
-  - **K14 = Run/Acc #1** — main power relay supplying voltage to modules/accessories in Run/Acc mode. BCM controls this relay.
-  - **K15 = Run/Acc #2** — also hot. BCM controls both Run/Acc relays.
-- Both Run/Acc relays stuck on = BCM is holding the car in a powered state. BCM may be a victim (responding correctly to a module keeping the CAN bus awake) rather than the root cause.
-- Notably hotter than neighboring relays — not just "on" but carrying more current than expected (see Working Theory)
-- Replacement relays ordered online; bench test possible in the meantime (see Relay Testing below)
+### Relay Findings — K14 and K15 Tested, Mechanically Normal
+- **K14 = Run/Acc #1** and **K15 = Run/Acc #2** found significantly hotter than all other relays
+- BCM controls both Run/Acc relays; both being stuck on means BCM is holding the car in a powered state
+- BCM may be a victim (responding to a module keeping CAN bus awake) rather than the root cause
 
-### Relay Testing (bench test, no replacement needed)
-Using a 12V source and multimeter:
-1. **Test for welded contacts:** With relay unplugged, check continuity between pins 30 and 87. Continuity at rest = welded/bad relay.
-2. **Test coil and switching:** Apply 12V to pins 85 (+) and 86 (-). Should hear a click and get continuity between 30 and 87. Remove 12V — should click again and continuity should disappear.
-- Note: pin numbers above assume standard ISO mini relay — verify against actual relay before testing
+**Bench test results — relays are mechanically normal, no further testing needed:**
+- Coil resistance (pins 85/86): all 13748474 relays in PDC read 0–0.4 ohms — this is normal for this relay design, not a fault
+- Contact test (pins 30/87 at rest): open circuit — contacts are not welded
+- Heat on K14/K15 is caused by something commanding them to stay on, not a relay fault
+
+**Open question:** What is commanding K14/K15 to stay energized? Focus shifts to BCM and CAN bus — JScan DTC scan is the most important next step.
 
 ### Physical Inspection
 - Inspected CAN bus connectors behind glovebox — no discoloration, no loose connections, visually normal
@@ -74,48 +72,40 @@ Using a 12V source and multimeter:
 
 ### Battery Info
 - **Main battery:** A few months old — load tested GOOD
-- **Auxiliary battery:** Load tested at 300 CCA, low voltage — likely discharged from cranking without main battery connected. Currently on charger; retest before writing it off.
-- Note: voltage alone is not conclusive — always load test to confirm health under demand
+- **Auxiliary battery:** Factory rating 200 CCA — load tested at 300 CCA, exceeds spec. In good health. Low voltage was from cranking without main battery; resolved after charging.
 
-### DTC Snapshot (partial — batteries removed, exact codes unavailable)
+### DTC Snapshot (partial — batteries removed during testing, exact codes unavailable)
 - Many DTCs observed, majority relate to **inability to communicate with ABS module**
-- Consistent with ABS module going silent/misbehaving on CAN bus — every other module that tries to reach it logs a comm fault
+- Consistent with ABS module going silent/misbehaving on CAN bus — every other module logs a comm fault when it can't reach ABS
 - Full DTC export via JScan needed when batteries are reinstalled — **save/export report before clearing anything**
 
 ---
 
 ## Working Theory
-The pre-existing symptoms (speaker pops, cruise control dropout) suggest **CAN bus communication instability that predates the main failure**. The combination of ABS faults, EHPS loss, infotainment failure, no-shutdown behavior, and both Run/Acc relays significantly hot points to a **systemic electrical/network issue** rather than a simple bad ABS module. The ABS module replacement may have been masking a deeper problem.
+The pre-existing symptoms (speaker pops, cruise control dropout) suggest **CAN bus communication instability that predates the main failure**. The combination of ABS faults, EHPS loss, infotainment failure, no-shutdown behavior, and both Run/Acc relays having shorted coils points to a **systemic electrical/network issue** rather than a simple bad ABS module.
 
-Likely root cause candidates (all hypotheses — need further diagnosis):
-- A module stuck awake on the CAN bus (ABS, BCM, or SGW) preventing system sleep
-- A module stuck in an active/fault state (boot loop, processing a fault continuously, or internal short) drawing excessive current through K14/K15 — hypothesis to explain why they are significantly hotter than other relays, not just warm. A passively awake module draws little current; one actively faulting can draw much more.
+Likely root cause candidates (all hypotheses except relay failure — need further diagnosis):
+- K14 and K15 are mechanically normal — relays are being commanded to stay on by something upstream
+- A module stuck awake or actively faulting on the CAN bus (ABS, BCM, or SGW) preventing system sleep
 - A wiring or ground fault causing one or more modules to misbehave
-- Welded relay contacts on K14/K15
+- The ABS module replacement may have been masking a deeper underlying problem
 
 ---
 
 ## Open Questions
-- Does aux battery recover after charging and pass a second load test?
-- Do K14/K15 pass the bench continuity test (welded contacts)?
+- What is commanding K14/K15 to stay on? BCM or a module keeping CAN bus awake?
 - Is the ABS module detected by JScan at all when reconnected?
 - Is the SGW (F05) involved — causing cascading CAN bus faults?
 - What do full DTCs show across BCM and SGW specifically?
-- If new relays are fitted and also run significantly hot → overcurrent situation, which module is responsible?
+- Did something upstream cause the relay coils to short, or did they fail on their own?
 
 ---
 
 ## Suggested Next Steps (Prioritized)
 
-**Step 1 — Complete battery work**
-- Retest aux battery after charging; replace only if it fails load test again
-- Reinstall both batteries in the Jeep
+**Step 1 — Reinstall both batteries**
 
-**Step 2 — Bench test K14 and K15 relays**
-- Test for welded contacts and coil function (see Relay Testing above)
-- Order replacement relays online if not already done
-
-**Step 3 — Connect JScan BEFORE starting the car**
+**Step 2 — Connect JScan BEFORE starting the car**
 - Check if ABS module is even detected in the module list
   - Not detected → module is dead or has a power/ground connection problem
   - Detected but with comm errors → module is alive but misbehaving on the network
@@ -123,8 +113,7 @@ Likely root cause candidates (all hypotheses — need further diagnosis):
 - Export/save the DTC report before clearing anything
 - Share DTCs here for analysis before taking further action
 
-**Step 4 — Based on DTC results (TBD)**
-- Swap K14/K15 with replacement relays — if new relays also get significantly hot quickly, confirms active overcurrent downstream and finding the responsible module becomes the priority
+**Step 3 — Based on DTC results (TBD)**
 - Check ABS module power and ground connections for corrosion or loose pins
 - Confirm whether replacement ABS module is new OEM, remanufactured, or used
 
