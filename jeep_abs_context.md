@@ -74,10 +74,38 @@ These symptoms existed even when the car appeared "normal" — likely early sign
 - **Main battery:** A few months old — load tested GOOD
 - **Auxiliary battery:** Factory rating 200 CCA — load tested at 300 CCA, exceeds spec. In good health. Low voltage was from cranking without main battery; resolved after charging.
 
-### DTC Snapshot (partial — batteries removed during testing, exact codes unavailable)
-- Many DTCs observed, majority relate to **inability to communicate with ABS module**
-- Consistent with ABS module going silent/misbehaving on CAN bus — every other module logs a comm fault when it can't reach ABS
-- Full DTC export via JScan needed when batteries are reinstalled — **save/export report before clearing anything**
+### DTC Scan Results (full scan, 3/8/2026, odometer 71264)
+Car would not start and could not be turned off during this scan.
+
+**Key finding: CAN C1 Bus Off (U0002-00)** — the CAN bus shut itself down due to excessive errors. This is the root cause of the avalanche of "lost communication" codes across all modules. It is one failure cascading everywhere, not multiple independent failures.
+
+**Critical BCM codes (active):**
+- **U0121-00** — lost communication with ABS module
+- **U0100-00** — lost communication with ECM/PCM
+- **U0161-00** — lost communication with compass module
+- **P1276-14** — starter control 2 circuit short to ground or open (explains no-start)
+- **B2103-15** — ignition run/start 1 control circuit short to battery or open
+- **B2121-15** — ignition run control 1 circuit short to battery or open (explains can't turn off)
+- **B212E-15** — ignition run/acc control 1 circuit short to battery or open
+- **B2119-15** — ignition run/acc/spad control circuit short to battery or open
+- **B2335-15** — horn control circuit short to battery or open
+- **B2312-15 / B2316-15 / B231A-15** — wiper controls circuit short to battery or open
+- **U1514-87** — engine controller secret code missing message
+- **U0002-00** — CAN C1 bus off (stored)
+- **U0184-00** — lost communication with radio (stored)
+
+**Other modules — all showing CAN bus / communication faults consistent with bus-off:**
+- Instrument Panel Cluster: U0121, U0131, U0002, U1464
+- Radio Frequency Hub: U0002, U0121, U0140, U0001, B2199 (low battery voltage)
+- Steering Column Control Module: U0001, U0422
+- Tire Pressure Monitor: U0100, U0121, U0140, U0422
+- HVAC: U0422, U0184
+- Integrated Center Stack: U0184
+- Radio: B222C (vehicle configuration not programmed), U0422
+
+**Most likely culprit: ABS module or its wiring** — appears as lost communication in every single module, was recently replaced, and a faulty CAN node can cause bus-off errors. 
+
+**Immediate test: unplug the ABS module connector** and rescan — if CAN bus recovers, ABS module or its wiring is confirmed as the cause.
 
 ---
 
@@ -103,32 +131,47 @@ Likely root cause candidates (all hypotheses except relay failure — need furth
 
 ## Suggested Next Steps (Prioritized)
 
-**Step 1 — Reinstall both batteries**
+**Step 1 — Unplug ABS module connector and rescan with JScan**
+- If CAN bus recovers (U0002 clears, communication faults drop) → ABS module or its wiring is confirmed cause
+- If CAN bus remains offline → fault is elsewhere on the network
 
-**Step 2 — Connect JScan BEFORE starting the car**
-- Check if ABS module is even detected in the module list
-  - Not detected → module is dead or has a power/ground connection problem
-  - Detected but with comm errors → module is alive but misbehaving on the network
-- Full scan across ALL modules — especially BCM and SGW (F05)
-- Export/save the DTC report before clearing anything
-- Share DTCs here for analysis before taking further action
+**Step 2 — Based on Step 1 result**
+- ABS confirmed → inspect ABS module wiring harness and connector for damage, corrosion, bent pins; confirm whether replacement module is OEM, remanufactured, or used; consider replacing module again or trying a known-good unit
+- ABS not confirmed → systematically unplug other CAN nodes one at a time to find which one is pulling the bus offline
 
-**Step 3 — Based on DTC results (TBD)**
-- Check ABS module power and ground connections for corrosion or loose pins
-- Confirm whether replacement ABS module is new OEM, remanufactured, or used
+**Step 3 — Address no-start / no-shutdown**
+- Likely resolves once CAN bus is restored; BCM ignition control codes (B2103, B2121) are probably a consequence of bus-off, not independent failures
+- If they persist after CAN bus recovery, BCM may need further investigation
 
 ---
 
 ## Session Notes
 
-### Session 1
-- **Date:**
-- **DTCs found:**
+### Session 1 — 3/8/2026
 - **Actions taken:**
-- **Outcome / next steps:**
+  - Load tested both batteries — main good, aux good (300 CCA vs 200 CCA factory rating)
+  - Bench tested K14 and K15 relays — coils and contacts normal, relays are not the problem
+  - Reinstalled both batteries
+  - Ran full JScan DTC scan — see DTC Scan Results above
+  - Unplugged ABS module connector as part of testing
+- **Current state:** ABS module connector is unplugged. Car would not start and could not be turned off during scan. This is expected with ABS unplugged and CAN bus offline.
+- **Immediate next step:** Plug ABS module back in, clear all DTCs, rescan to see what remains without testing artifacts
 
 ### Session 2
 - **Date:**
 - **DTCs found:**
 - **Actions taken:**
 - **Outcome / next steps:**
+
+---
+
+## ⚠️ Handoff Note — Pick Up Here
+**Date:** 3/8/2026
+
+The ABS module connector was unplugged during diagnostic testing. The current no-start and no-shutdown condition is a direct result of this — not a new problem.
+
+**First thing to do in this session:**
+1. Plug the ABS module connector back in (firmly, locking tab must click)
+2. Clear all DTCs via JScan
+3. Rescan all modules
+4. Report remaining codes — those will represent the true underlying issue without testing artifacts
